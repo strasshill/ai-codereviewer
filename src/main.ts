@@ -80,12 +80,13 @@ async function analyzeCode(
 
 function createPrompt(file: File, chunk: Chunk, prDetails: PRDetails): string {
   return `Your task is to review pull requests. Instructions:
-- Provide the response in following JSON format:  {"reviews": [{"lineNumber":  <line_number>, "reviewComment": "<review comment>"}]}
 - Do not give positive comments or compliments.
 - Provide comments and suggestions ONLY if there is something to improve, otherwise "reviews" should be an empty array.
 - Write the comment in GitHub Markdown format.
 - Use the given description only for the overall context and only comment the code.
 - IMPORTANT: NEVER suggest adding comments to the code.
+- IMPORTANT: Provide the response in following JSON format:  {"comments": [{"lineNumber":  <line_number>, "body": "<review comment>"}]}
+
 
 Review the following code diff in the file "${
     file.to
@@ -112,7 +113,7 @@ ${chunk.changes
 
 async function getAIResponse(prompt: string): Promise<Array<{
   lineNumber: string;
-  reviewComment: string;
+  body: string;
 }> | null> {
   const queryConfig = {
     model: OPENAI_API_MODEL,
@@ -151,7 +152,7 @@ function createComment(
   chunk: Chunk,
   aiResponses: Array<{
     lineNumber: string;
-    reviewComment: string;
+    body: string;
   }>
 ): Array<{ body: string; path: string; line: number }> {
   return aiResponses.flatMap((aiResponse) => {
@@ -159,14 +160,14 @@ function createComment(
       return [];
     }
     return {
-      body: aiResponse.reviewComment,
+      body: aiResponse.body,
       path: file.to,
       line: Number(aiResponse.lineNumber),
     };
   });
 }
 
-async function createReviewComment(
+async function createbody(
   owner: string,
   repo: string,
   pull_number: number,
@@ -234,7 +235,7 @@ async function main() {
 
   const comments = await analyzeCode(filteredDiff, prDetails);
   if (comments.length > 0) {
-    await createReviewComment(
+    await createbody(
       prDetails.owner,
       prDetails.repo,
       prDetails.pull_number,
